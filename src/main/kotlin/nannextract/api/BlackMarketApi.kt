@@ -6,6 +6,7 @@ import nannextract.model.BlogPostMeta
 import com.google.gson.reflect.TypeToken
 import nannextract.model.User
 import okhttp3.*
+import org.jsoup.Jsoup
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
@@ -40,13 +41,14 @@ class BlackMarketApi {
 		}
 	}
 
-	private fun retrieveBlogListPage(uid:Int, pageNumber:Int) : Pair<List<BlogPostMeta>, Boolean> {
+	fun retrieveBlogListPage(uid:Int, pageNumber:Int) : Pair<List<BlogPostMeta>, Boolean> {
 		val url = "http://blackmarket.dk/Blog?action=viewlist&view=list&uid=$uid&pageno=$pageNumber"
 		val request = Request.Builder()
 				.url(url)
 				.get()
 				.build()
 		val response = client.newCall(request).execute()
+		val dom = Jsoup.parse(response.body().string())
 
 		return Pair(emptyList(), false)
 	}
@@ -65,7 +67,6 @@ class BlackMarketApi {
 
 	fun lookupUser(userName:String) : List<User>
 	{
-
 		val body = FormBody.Builder().add("action", "usernameautocompletelist").add("callback", "Jeg_er_en_robot").add("term", userName).build()
 		val request = Request.Builder().url("http://blackmarket.dk/User").post(body).build()
 		val response = client.newCall(request).execute()
