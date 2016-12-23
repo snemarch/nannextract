@@ -1,6 +1,8 @@
 package nannextract.api
 
 import com.google.gson.Gson
+import nannextract.model.Author
+import nannextract.model.BlogPostMeta
 import com.google.gson.reflect.TypeToken
 import nannextract.model.User
 import okhttp3.*
@@ -24,6 +26,29 @@ class BlackMarketApi {
 
 		isLoggedIn = client.newCall(request).execute().isSuccessful
 		return isLoggedIn
+	}
+
+	fun retrieveBlogPostListFor(author:Author) {
+		val currentPage = 1
+
+		while(true) {
+			val (list, morePages) = retrieveBlogListPage(author.userId, currentPage)
+
+			if(!morePages) {
+				break
+			}
+		}
+	}
+
+	private fun retrieveBlogListPage(uid:Int, pageNumber:Int) : Pair<List<BlogPostMeta>, Boolean> {
+		val url = "http://blackmarket.dk/Blog?action=viewlist&view=list&uid=$uid&pageno=$pageNumber"
+		val request = Request.Builder()
+				.url(url)
+				.get()
+				.build()
+		val response = client.newCall(request).execute()
+
+		return Pair(emptyList(), false)
 	}
 
 	fun dumpCookies() {
