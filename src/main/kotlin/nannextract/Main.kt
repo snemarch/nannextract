@@ -1,6 +1,7 @@
 package nannextract
 
 import nannextract.api.BlackMarketApi
+import nannextract.model.User
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -37,4 +38,5 @@ fun main(args : Array<String>) {
 
 		FileOutputStream(File(COOKIEJAR_FILENAME)).use { api.saveCookies(it) }
 	}
+
 }
