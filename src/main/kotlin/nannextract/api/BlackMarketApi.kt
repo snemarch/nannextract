@@ -36,7 +36,7 @@ class BlackMarketApi {
 				.post(body)
 				.build()
 
-		isLoggedIn = client.newCall(request).execute().isSuccessful
+		isLoggedIn = client.newCall(request).execute().use { it.isSuccessful }
 		return isLoggedIn
 	}
 
@@ -158,10 +158,11 @@ class BlackMarketApi {
 		})
 	}
 
-
 	class CookieStore : CookieJar {
-		private val cookieStore:MutableSet<Cookie> = mutableSetOf()
+		@Transient
 		private val notExpired = { cookie:Cookie -> cookie.expiresAt() > System.currentTimeMillis() }
+
+		private val cookieStore:MutableSet<Cookie> = mutableSetOf()
 
 		override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
 			cookieStore.addAll(cookies)
