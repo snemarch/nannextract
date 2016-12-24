@@ -52,7 +52,7 @@ class BlackMarketApi {
 
 		while(true) {
 			val list = retrieveBlogListPage(author.userId, currentPage++)
-			if(list.isEmpty()){
+			if(list.isEmpty()) {
 				break
 			}
 
@@ -71,36 +71,33 @@ class BlackMarketApi {
 				.url(url)
 				.get()
 				.build()
-		val response = client.newCall(request).execute()
 
-		val dom = Jsoup.parse(response.body().string())
-		response.close()
+		val response = client.newCall(request).execute()
+		val dom = response.use { Jsoup.parse(response.body().string()) }
 
 		// This is the kind of selectors you get when dealing with horrible markup
 		val areaOfInterest = dom.select("div.content > table table.pane > tbody")
 		val noBlogs = areaOfInterest.select("> tr:eq(4) > td table > tbody > tr:eq(2) > td:contains(ingen blogs)")
-		if (noBlogs.size != 0)
-		{
+		if (noBlogs.size != 0) {
 			return emptyList()
 		}
 
 		val rows = areaOfInterest.select("> tr:eq(4) table > tbody > tr[onmouseover]")
 
 		val posts = rows.map {
-			it ->
-				val idAndTitle = idAndTitleMatcher.matcher(it.select("td:eq(0) > a").outerHtml())
-				val dateString = it.select("td:eq(2)").text()
-				val numViewsMatch = numViewsMatcher.matcher(it.select("td:eq(3)").text())
+			val idAndTitle = idAndTitleMatcher.matcher(it.select("td:eq(0) > a").outerHtml())
+			val dateString = it.select("td:eq(2)").text()
+			val numViewsMatch = numViewsMatcher.matcher(it.select("td:eq(3)").text())
 
-				if(! (idAndTitle.find() && numViewsMatch.find() )) {
-					throw RuntimeException("Couldn't parse row")
-				}
+			if (!(idAndTitle.find() && numViewsMatch.find())) {
+				throw RuntimeException("Couldn't parse row")
+			}
 
-				val id = idAndTitle.group(1).toInt()
-				val title = idAndTitle.group(2)
-				val numViews = numViewsMatch.group(1).toInt()
+			val id = idAndTitle.group(1).toInt()
+			val title = idAndTitle.group(2)
+			val numViews = numViewsMatch.group(1).toInt()
 
-				BlogPostMeta(id, title, DateUtil.parseNaturalDate(Supplier{ LocalDate.now() }, dateString), numViews)
+			BlogPostMeta(id, title, DateUtil.parseNaturalDate(Supplier { LocalDate.now() }, dateString), numViews)
 		}
 
 		return posts
@@ -125,8 +122,7 @@ class BlackMarketApi {
 		val response = client.newCall(request).execute()
 
 		// Could probably be done better
-		val responseBody = response.body().string()
-		response.close()
+		val responseBody = response.use { response.body().string() }
 
 		val startIndex = "Jeg_er_en_robot".length + 1
 		val endIndex = responseBody.length - 2
@@ -140,27 +136,24 @@ class BlackMarketApi {
 		return users
 	}
 
-	fun retrieveBlogContent(ID:Int, consumer:Consumer<Pair<Int, String>>)
+	fun retrieveBlogContent(blogId:Int, consumer:Consumer<Pair<Int, String>>)
 	{
-		val formBody = FormBody.Builder().add("action", "view").add("id", ID.toString()).build()
+		val formBody = FormBody.Builder().add("action", "view").add("id", blogId.toString()).build()
 		val request = Request.Builder().url("http://blackmarket.dk/Blog").post(formBody).build()
 
 		client.newCall(request).enqueue(object : Callback {
-			override fun onFailure(call: Call?, e: IOException?) {
-				System.err.println("Error retrieving blog#$ID - $e")
+			override fun onFailure(call: Call, e: IOException) {
+				System.err.println("Error retrieving blog#$blogId - $e")
 			}
 
-			override fun onResponse(call: Call?, response: Response?) {
-				response?.let {
-					val dom = Jsoup.parse(response.body().string())
-					val blogContent = dom.select("table.pane:eq(0) > tbody > tr:eq(3) > td")
+			override fun onResponse(call: Call, response: Response) {
+				val dom = response.use { Jsoup.parse(response.body().string()) }
+				val blogContent = dom.select("table.pane:eq(0) > tbody > tr:eq(3) > td")
 
-					// Removes surrounding <td> tags before returning
-					val body = blogContent.toString().substring(4, blogContent.toString().length - 5)
+				// Removes surrounding <td> tags before returning
+				val body = blogContent.toString().substring(4, blogContent.toString().length - 5)
 
-					consumer.accept(Pair(ID, body))
-					response.close()
-				}
+				consumer.accept(Pair(blogId, body))
 			}
 		})
 	}
@@ -168,13 +161,14 @@ class BlackMarketApi {
 
 	class CookieStore : CookieJar {
 		private val cookieStore:MutableSet<Cookie> = mutableSetOf()
+		private val notExpired = { cookie:Cookie -> cookie.expiresAt() > System.currentTimeMillis() }
 
 		override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
 			cookieStore.addAll(cookies)
 		}
 
 		override fun loadForRequest(url: HttpUrl): List<Cookie> {
-			return cookieStore.filter { it -> (it.expiresAt() > System.currentTimeMillis()) }
+			return cookieStore.filter(notExpired)
 		}
 
 		fun save(stream:OutputStream) {
@@ -184,14 +178,11 @@ class BlackMarketApi {
 		}
 
 		fun load(stream:InputStream) {
-			InputStreamReader(stream).use {
-				val blob = it.readText()
-				val newCookies = Gson().fromJson(blob, CookieStore::class.java).cookieStore
+			val blob = InputStreamReader(stream).use { it.readText() }
+			val newCookies = Gson().fromJson(blob, CookieStore::class.java).cookieStore
 
-				this.cookieStore.clear()
-				this.cookieStore.addAll(newCookies)
-			}
-
+			this.cookieStore.clear()
+			this.cookieStore.addAll(newCookies.filter(notExpired))
 		}
 
 		fun dumpCookies() = cookieStore.forEach { println("Cookie: ${it.name()} = ${it.value()}, expires ${Date(it.expiresAt())}") }
