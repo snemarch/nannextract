@@ -80,7 +80,7 @@ fun main(args : Array<String>) {
 		val running = api.client.dispatcher().runningCallsCount()
 		val pending = api.client.dispatcher().queuedCallsCount()
 
-§		print("\rRunning: $running, pending: $pending          ")
+		print("\rRunning: $running, pending: $pending          ")
 		if(running == 0 && pending == 0) {
 			break
 		}
