@@ -128,7 +128,6 @@ class BlackMarketApi {
 	}
 
 
-
 	class CookieStore : CookieJar {
 		private val cookieStore:MutableSet<Cookie> = mutableSetOf()
 
