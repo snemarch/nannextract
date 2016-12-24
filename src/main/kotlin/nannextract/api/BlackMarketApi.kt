@@ -1,14 +1,20 @@
 package nannextract.api
 
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import nannextract.model.Author
 import nannextract.model.BlogPostMeta
-import com.google.gson.reflect.TypeToken
 import nannextract.model.User
+import nannextract.util.DateUtil
 import okhttp3.*
 import org.jsoup.Jsoup
-import java.io.*
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.OutputStream
+import java.io.OutputStreamWriter
+import java.time.LocalDate
 import java.util.*
+import java.util.function.Supplier
 import java.util.regex.Pattern
 
 class BlackMarketApi {
@@ -65,33 +71,20 @@ class BlackMarketApi {
 			it ->
 				val idAndTitle = idAndTitleMatcher.matcher(it.select("td:eq(0) > a").outerHtml())
 				val dateString = it.select("td:eq(2)").text()
-				val numViews = numViewsMatcher.matcher(it.select("td:eq(3)").text())
+				val numViewsMatch = numViewsMatcher.matcher(it.select("td:eq(3)").text())
 
-				if(! (idAndTitle.find() && numViews.find() )) {
+				if(! (idAndTitle.find() && numViewsMatch.find() )) {
 					throw RuntimeException("Couldn't parse row")
 				}
 
-				BlogPostMeta(id = idAndTitle.group(1).toInt(), title = idAndTitle.group(2), numViews = numViews.group(1).toInt(), date = parseNaturalDate(dateString))
+				val id = idAndTitle.group(1).toInt()
+				val title = idAndTitle.group(2)
+				val numViews = numViewsMatch.group(1).toInt()
+
+				BlogPostMeta(id, title, DateUtil.parseNaturalDate(Supplier{ LocalDate.now() }, dateString), numViews)
 		}
 
 		return Pair(posts, false)
-	}
-
-	val currentMonthMatcher = Pattern.compile("\\d+/\\d+")!!
-	val fullDateMatcher = Pattern.compile("\\d+/\\d+-\\d+")!!
-	fun parseNaturalDate(dateString: String): Date {
-		val montMatcher = currentMonthMatcher.matcher(dateString)
-		val fullMatch = fullDateMatcher.matcher(dateString)
-
-		when {
-			dateString == "I dag" -> { }
-			dateString == "I går" -> {}
-			dateString == "I forgårs" -> {}
-			montMatcher.find() -> {}
-			fullMatch.find() -> {}
-		}
-
-		return Date(0)
 	}
 
 	fun dumpCookies() {

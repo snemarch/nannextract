@@ -1,5 +1,5 @@
 package nannextract.model
 
-import java.util.*
+import java.time.LocalDate
 
-data class BlogPostMeta(val id:Int, val title:String, val date:Date, val numViews:Int)
+data class BlogPostMeta(val id:Int, val title:String, val date: LocalDate, val numViews:Int)
