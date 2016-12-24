@@ -7,24 +7,27 @@ import nannextract.model.BlogPostMeta
 import nannextract.util.DateUtil
 import okhttp3.*
 import org.jsoup.Jsoup
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.OutputStream
-import java.io.OutputStreamWriter
+import java.io.*
 import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
 import java.util.function.Supplier
 import java.util.regex.Pattern
 
 class BlackMarketApi {
-	val maxIdleConnections = 10
+	val MAX_CONCURRENT_CONNECTIONS = 20
+
 	val cookieStore = CookieStore()
 	val client:OkHttpClient = OkHttpClient.Builder()
 			.cookieJar(cookieStore)
-			.connectionPool(ConnectionPool(maxIdleConnections, 5, TimeUnit.MINUTES))
 			.build()
 	var isLoggedIn = false
+
+	init {
+		client.dispatcher().maxRequests = MAX_CONCURRENT_CONNECTIONS
+		client.dispatcher().maxRequestsPerHost = MAX_CONCURRENT_CONNECTIONS
+	}
 
 	fun login(user:String, password:String):Boolean {
 		val body = FormBody.Builder().add("username", user).add("password", password).build()
@@ -35,6 +38,11 @@ class BlackMarketApi {
 
 		isLoggedIn = client.newCall(request).execute().isSuccessful
 		return isLoggedIn
+	}
+
+	fun shutdown() {
+		client.dispatcher().executorService().shutdown()
+		client.dispatcher().executorService().awaitTermination(10, TimeUnit.SECONDS)
 	}
 
 	fun retrieveBlogPostListFor(author:Author) : List<BlogPostMeta> {
@@ -129,18 +137,29 @@ class BlackMarketApi {
 		return users
 	}
 
-	fun retrieveBlogContent(ID:Int) : String
+	fun retrieveBlogContent(ID:Int, consumer:Consumer<Pair<Int, String>>)
 	{
-		val body = FormBody.Builder().add("action", "view").add("id", ID.toString()).build()
-		val request = Request.Builder().url("http://blackmarket.dk/Blog").post(body).build()
-		val response = client.newCall(request).execute()
+		val formBody = FormBody.Builder().add("action", "view").add("id", ID.toString()).build()
+		val request = Request.Builder().url("http://blackmarket.dk/Blog").post(formBody).build()
 
-		val dom = Jsoup.parse(response.body().string())
+		client.newCall(request).enqueue(object : Callback {
+			override fun onFailure(call: Call?, e: IOException?) {
+				System.err.println("Error retrieving blog#$ID - $e")
+			}
 
-		val blogContent = dom.select("table.pane:eq(0) > tbody > tr:eq(3) > td")
+			override fun onResponse(call: Call?, response: Response?) {
+				response?.let {
+					val dom = Jsoup.parse(response.body().string())
+					val blogContent = dom.select("table.pane:eq(0) > tbody > tr:eq(3) > td")
 
-		// Removes surrounding <td> tags before returning
-		return blogContent.toString().substring(4,blogContent.toString().length - 5)
+					// Removes surrounding <td> tags before returning
+					val body = blogContent.toString().substring(4, blogContent.toString().length - 5)
+
+					consumer.accept(Pair(ID, body))
+					response.close()
+				}
+			}
+		})
 	}
 
 
