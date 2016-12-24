@@ -71,13 +71,26 @@ class BlackMarketApi {
 					throw RuntimeException("Couldn't parse row")
 				}
 
-				BlogPostMeta(id = idAndTitle.group(1).toInt(), title = idAndTitle.group(2), numViews = numViews.group(1).toInt(), date = unfuck(dateString))
+				BlogPostMeta(id = idAndTitle.group(1).toInt(), title = idAndTitle.group(2), numViews = numViews.group(1).toInt(), date = parseNaturalDate(dateString))
 		}
 
 		return Pair(posts, false)
 	}
 
-	fun unfuck(dateString: String?): Date {
+	val currentMonthMatcher = Pattern.compile("\\d+/\\d+")!!
+	val fullDateMatcher = Pattern.compile("\\d+/\\d+-\\d+")!!
+	fun parseNaturalDate(dateString: String): Date {
+		val montMatcher = currentMonthMatcher.matcher(dateString)
+		val fullMatch = fullDateMatcher.matcher(dateString)
+
+		when {
+			dateString == "I dag" -> { }
+			dateString == "I går" -> {}
+			dateString == "I forgårs" -> {}
+			montMatcher.find() -> {}
+			fullMatch.find() -> {}
+		}
+
 		return Date(0)
 	}
 
