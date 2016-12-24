@@ -7,10 +7,7 @@ import com.google.gson.reflect.TypeToken
 import nannextract.model.User
 import okhttp3.*
 import org.jsoup.Jsoup
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.OutputStream
-import java.io.OutputStreamWriter
+import java.io.*
 import java.util.*
 
 class BlackMarketApi {
@@ -71,6 +68,7 @@ class BlackMarketApi {
 		val request = Request.Builder().url("http://blackmarket.dk/User").post(body).build()
 		val response = client.newCall(request).execute()
 
+		// Could probably be done better
 		val responseBody = response.body().string()
 		val startIndex = "Jeg_er_en_robot".length + 1
 		val endIndex = responseBody.length - 2
@@ -84,6 +82,22 @@ class BlackMarketApi {
 		return users
 	}
 
+	fun retrieveBlogContent(ID:Int) : String
+	{
+		val body = FormBody.Builder().add("action", "view").add("id", ID.toString()).build()
+		val request = Request.Builder().url("http://blackmarket.dk/Blog").post(body).build()
+		val response = client.newCall(request).execute()
+
+		val dom = Jsoup.parse(response.body().string())
+
+		val blogContent = dom.select("table.pane:eq(0) > tbody > tr:eq(3) > td")
+
+		// Removes surrounding <td> tags before returning
+		return blogContent.toString().substring(4,blogContent.toString().length - 5)
+	}
+
+
+
 	class CookieStore : CookieJar {
 		private val cookieStore:MutableSet<Cookie> = mutableSetOf()
 
@@ -92,7 +106,9 @@ class BlackMarketApi {
 		}
 
 		override fun loadForRequest(url: HttpUrl): List<Cookie> {
-			return cookieStore.filter { it -> it.expiresAt() < System.currentTimeMillis() }
+			val cookies = cookieStore.filter { it -> (it.expiresAt() > System.currentTimeMillis()) }
+			println("filtered cookies: $cookies")
+			return cookies
 		}
 
 		fun save(stream:OutputStream) {
