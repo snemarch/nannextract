@@ -14,12 +14,17 @@ import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.time.LocalDate
 import java.util.*
+import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 import java.util.regex.Pattern
 
 class BlackMarketApi {
+	val maxIdleConnections = 10
 	val cookieStore = CookieStore()
-	val client:OkHttpClient = OkHttpClient.Builder().cookieJar(cookieStore).build()
+	val client:OkHttpClient = OkHttpClient.Builder()
+			.cookieJar(cookieStore)
+			.connectionPool(ConnectionPool(maxIdleConnections, 5, TimeUnit.MINUTES))
+			.build()
 	var isLoggedIn = false
 
 	fun login(user:String, password:String):Boolean {
