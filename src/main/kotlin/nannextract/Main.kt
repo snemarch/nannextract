@@ -1,10 +1,14 @@
 package nannextract
 
 import nannextract.api.BlackMarketApi
-import nannextract.model.User
+import nannextract.model.Author
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalTime
+import java.util.*
 
 fun main(args : Array<String>) {
 	val COOKIEJAR_FILENAME = "cookiejar.json"
@@ -38,6 +42,12 @@ fun main(args : Array<String>) {
 
 		FileOutputStream(File(COOKIEJAR_FILENAME)).use { api.saveCookies(it) }
 	}
+	val before = Instant.now()
 
+	val blogliste = api.retrieveBlogPostListFor(author = Author(11029, ""))
+
+	val end = Instant.now()
+	val dur = Duration.between(before, end)
+	println(dur)
 }
 

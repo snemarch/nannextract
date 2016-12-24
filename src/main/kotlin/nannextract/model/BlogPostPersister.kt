@@ -12,14 +12,12 @@ class FileBasedBlogPersister(dir:String) : BlogPostPersister
 {
 	val directory = dir
 
-	init
-	{
+	init{
 		println("Making dir: .\\$dir")
 		File(".\\$dir").mkdir()
 	}
 
-	override fun persist(post:BlogPost)
-	{
+	override fun persist(post:BlogPost){
 		val file = File(".\\$directory\\${post.author.name}.${post.meta.title}.html")
 		file.printWriter().use { out ->
 			out.print(post.content)

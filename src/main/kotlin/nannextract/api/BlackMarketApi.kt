@@ -34,17 +34,17 @@ class BlackMarketApi {
 	}
 
 	fun retrieveBlogPostListFor(author:Author) : List<BlogPostMeta> {
-		val currentPage = 1
+		var currentPage = 1
 
-		var blogMetaList = mutableListOf<BlogPostMeta>()
+		val blogMetaList = mutableListOf<BlogPostMeta>()
 
 		while(true) {
-			val (list, morePages) = retrieveBlogListPage(author.userId, currentPage)
-			blogMetaList.addAll(list)
-
-			if(!morePages) {
+			val list = retrieveBlogListPage(author.userId, currentPage++)
+			if(list.isEmpty()){
 				break
 			}
+
+			blogMetaList.addAll(list)
 		}
 
 		return blogMetaList
@@ -53,7 +53,7 @@ class BlackMarketApi {
 	private val idAndTitleMatcher = Pattern.compile("<a href=\".*?id=(\\d+).*\" title=\"(.*)\">.*</a>")
 	private val numViewsMatcher = Pattern.compile("(\\d+)")
 
-	private fun retrieveBlogListPage(userId:Int, pageNumber:Int) : Pair<List<BlogPostMeta>, Boolean> {
+	private fun retrieveBlogListPage(userId:Int, pageNumber:Int) : List<BlogPostMeta> {
 		val url = "http://blackmarket.dk/Blog?action=viewlist&view=list&uid=$userId&pageno=$pageNumber"
 		val request = Request.Builder()
 				.url(url)
@@ -65,6 +65,12 @@ class BlackMarketApi {
 
 		// This is the kind of selectors you get when dealing with horrible markup
 		val areaOfInterest = dom.select("div.content > table table.pane > tbody")
+		val noBlogs = areaOfInterest.select("> tr:eq(4) > td table > tbody > tr:eq(2) > td:contains(ingen blogs)")
+		if (noBlogs.size != 0)
+		{
+			return emptyList()
+		}
+
 		val rows = areaOfInterest.select("> tr:eq(4) table > tbody > tr[onmouseover]")
 
 		val posts = rows.map {
@@ -84,7 +90,7 @@ class BlackMarketApi {
 				BlogPostMeta(id, title, DateUtil.parseNaturalDate(Supplier{ LocalDate.now() }, dateString), numViews)
 		}
 
-		return Pair(posts, false)
+		return posts
 	}
 
 	fun dumpCookies() {
