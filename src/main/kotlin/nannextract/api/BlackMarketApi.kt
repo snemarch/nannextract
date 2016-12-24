@@ -9,6 +9,7 @@ import okhttp3.*
 import org.jsoup.Jsoup
 import java.io.*
 import java.util.*
+import java.util.regex.Pattern
 
 class BlackMarketApi {
 	val cookieStore = CookieStore()
@@ -26,28 +27,58 @@ class BlackMarketApi {
 		return isLoggedIn
 	}
 
-	fun retrieveBlogPostListFor(author:Author) {
+	fun retrieveBlogPostListFor(author:Author) : List<BlogPostMeta> {
 		val currentPage = 1
+
+		var blogMetaList = mutableListOf<BlogPostMeta>()
 
 		while(true) {
 			val (list, morePages) = retrieveBlogListPage(author.userId, currentPage)
+			blogMetaList.addAll(list)
 
 			if(!morePages) {
 				break
 			}
 		}
+
+		return blogMetaList
 	}
 
-	fun retrieveBlogListPage(uid:Int, pageNumber:Int) : Pair<List<BlogPostMeta>, Boolean> {
-		val url = "http://blackmarket.dk/Blog?action=viewlist&view=list&uid=$uid&pageno=$pageNumber"
+	private val idAndTitleMatcher = Pattern.compile("<a href=\".*?id=(\\d+).*\" title=\"(.*)\">.*</a>")
+	private val numViewsMatcher = Pattern.compile("(\\d+)")
+
+	private fun retrieveBlogListPage(userId:Int, pageNumber:Int) : Pair<List<BlogPostMeta>, Boolean> {
+		val url = "http://blackmarket.dk/Blog?action=viewlist&view=list&uid=$userId&pageno=$pageNumber"
 		val request = Request.Builder()
 				.url(url)
 				.get()
 				.build()
 		val response = client.newCall(request).execute()
+
 		val dom = Jsoup.parse(response.body().string())
 
-		return Pair(emptyList(), false)
+		// This is the kind of selectors you get when dealing with horrible markup
+		val areaOfInterest = dom.select("div.content > table table.pane > tbody")
+		val rows = areaOfInterest.select("> tr:eq(4) table > tbody > tr[onmouseover]")
+
+		val posts = rows.map {
+			it ->
+				val idAndTitle = idAndTitleMatcher.matcher(it.select("td:eq(0) > a").outerHtml())
+				val dateString = it.select("td:eq(2)").text()
+				val numViews = numViewsMatcher.matcher(it.select("td:eq(3)").text())
+
+				if(! (idAndTitle.find() && numViews.find() )) {
+					throw RuntimeException("Couldn't parse row")
+				}
+
+				BlogPostMeta(id = idAndTitle.group(1).toInt(), title = idAndTitle.group(2), numViews = numViews.group(1).toInt(), date = unfuck(dateString))
+		}
+
+		return Pair(posts, false)
+	}
+
+	fun unfuck(dateString: String?): Date {
+		return Date(0)
 	}
 
 	fun dumpCookies() {
