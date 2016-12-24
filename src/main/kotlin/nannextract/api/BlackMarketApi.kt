@@ -148,9 +148,7 @@ class BlackMarketApi {
 		}
 
 		override fun loadForRequest(url: HttpUrl): List<Cookie> {
-			val cookies = cookieStore.filter { it -> (it.expiresAt() > System.currentTimeMillis()) }
-			println("filtered cookies: $cookies")
-			return cookies
+			return cookieStore.filter { it -> (it.expiresAt() > System.currentTimeMillis()) }
 		}
 
 		fun save(stream:OutputStream) {

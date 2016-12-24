@@ -16,9 +16,9 @@ class DateUtil {
 			val fullMatcher = fullDateMatcher.matcher(dateString)
 
 			when {
-				dateString == "I dag" -> return today
-				dateString == "I går" -> return today.minusDays(1)
-				dateString == "I forgårs" -> return today.minusDays(2)
+				dateString.startsWith("I dag") -> return today
+				dateString.startsWith("I går") -> return today.minusDays(1)
+				dateString.startsWith("I forgårs") -> return today.minusDays(2)
 				fullMatcher.find() -> {
 					val day = fullMatcher.group(1).toInt()
 					val month = fullMatcher.group(2).toInt()
