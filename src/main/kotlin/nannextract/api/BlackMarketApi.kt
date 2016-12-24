@@ -74,6 +74,7 @@ class BlackMarketApi {
 		val response = client.newCall(request).execute()
 
 		val dom = Jsoup.parse(response.body().string())
+		response.close()
 
 		// This is the kind of selectors you get when dealing with horrible markup
 		val areaOfInterest = dom.select("div.content > table table.pane > tbody")
@@ -125,6 +126,8 @@ class BlackMarketApi {
 
 		// Could probably be done better
 		val responseBody = response.body().string()
+		response.close()
+
 		val startIndex = "Jeg_er_en_robot".length + 1
 		val endIndex = responseBody.length - 2
 
