@@ -18,7 +18,7 @@ class FileBasedBlogPersister(dir:String) : BlogPostPersister
 	}
 
 	override fun persist(post:BlogPost){
-		val file = File(".\\$directory\\${post.author.name}.${post.meta.title}.html")
+		val file = File(".\\$directory\\${post.author.userName}.${post.meta.title}.html")
 		file.printWriter().use { out ->
 			out.print(post.content)
 		}

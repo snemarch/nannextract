@@ -4,7 +4,6 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import nannextract.model.Author
 import nannextract.model.BlogPostMeta
-import nannextract.model.User
 import nannextract.util.DateUtil
 import okhttp3.*
 import org.jsoup.Jsoup
@@ -110,7 +109,7 @@ class BlackMarketApi {
 		cookieStore.save(stream)
 	}
 
-	fun lookupUser(userName:String) : List<User>
+	fun lookupAuthor(userName:String) : List<Author>
 	{
 		val body = FormBody.Builder().add("action", "usernameautocompletelist").add("callback", "Jeg_er_en_robot").add("term", userName).build()
 		val request = Request.Builder().url("http://blackmarket.dk/User").post(body).build()
@@ -124,8 +123,8 @@ class BlackMarketApi {
 		val json_list = responseBody.substring(startIndex, endIndex)
 
 		// Hack to get gson deserialization to work
-		val listType = object : TypeToken<List<User>>(){}.type
-		val users:List<User> = Gson().fromJson<List<User>>(json_list, listType)
+		val listType = object : TypeToken<List<Author>>(){}.type
+		val users:List<Author> = Gson().fromJson<List<Author>>(json_list, listType)
 
 		return users
 	}
