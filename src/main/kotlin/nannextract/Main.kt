@@ -56,7 +56,7 @@ fun main(args : Array<String>) {
 	println("Retrieving list of blogs")
 	val blogList = api.retrieveBlogPostListFor(authors.first())
 
-	println("Retrieving blog entries")
+	println("Retrieving ${blogList.size} blog entries")
 
 	val beforeTime = Instant.now()
 
@@ -75,7 +75,7 @@ fun main(args : Array<String>) {
 		})
 	}
 
-	println("Waiting for all threads to shut down")
+	println("Waiting for work to be done")
 	while(true) {
 		val running = api.client.dispatcher().runningCallsCount()
 		val pending = api.client.dispatcher().queuedCallsCount()
@@ -89,7 +89,7 @@ fun main(args : Array<String>) {
 	}
 
 	val duration = Duration.between(beforeTime, Instant.now())
-	println("\nDone after $duration")
+	println("\nDone after ${duration.toMillis() / 1000.0}s, shutting down")
 
 	api.shutdown()
 }
