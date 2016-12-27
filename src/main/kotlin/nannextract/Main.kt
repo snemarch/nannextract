@@ -1,6 +1,7 @@
 package nannextract
 
 import nannextract.api.BlackMarketApi
+import nannextract.util.generateProgressBar
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -80,7 +81,12 @@ fun main(args : Array<String>) {
 		val running = api.client.dispatcher().runningCallsCount()
 		val pending = api.client.dispatcher().queuedCallsCount()
 
-		print("\rRunning: $running, pending: $pending          ")
+		val total = blogList.size
+		val percentDone = (total.toDouble() - pending) / total
+		val amountDone = total - pending
+		val progressBar = generateProgressBar(amountDone, total)
+
+		print("\r[$progressBar] ${Math.round(percentDone * 100)}% $amountDone/$total")
 		if(running == 0 && pending == 0) {
 			break
 		}
