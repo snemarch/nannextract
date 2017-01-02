@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import nannextract.model.Author
 import nannextract.model.BlogPostMeta
+import nannextract.model.Contact
 import nannextract.util.DateUtil
 import okhttp3.*
 import org.jsoup.Jsoup
@@ -154,6 +155,23 @@ class BlackMarketApi {
 				val body = blogContent.toString().substring(4, blogContent.toString().length - 5)
 
 				consumer.accept(Pair(blogId, body))
+			}
+		})
+	}
+
+	fun retrieveContact(userId:Int, consumer:Consumer<List<Contact>>) {
+		val url = "http://blackmarket.dk/Friend?action=viewall&uid=$userId&view=list"
+		val request = Request.Builder().url(url).get().build()
+
+		client.newCall(request).enqueue(object : Callback {
+			override fun onFailure(call: Call?, e: IOException?) {
+				System.err.println("Error retrieving contacts for user $userId!")
+				consumer.accept(emptyList())
+			}
+
+			override fun onResponse(call: Call, response: Response) {
+				val dom = response.use { Jsoup.parse(response.body().string()) }
+				consumer.accept(Extractors.extractContacts(dom, Supplier { LocalDate.now() }))
 			}
 		})
 	}
