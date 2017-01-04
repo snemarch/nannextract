@@ -12,47 +12,56 @@ import java.time.Duration
 import java.time.Instant
 import java.util.function.Consumer
 
+private val COOKIEJAR_FILENAME = "cookiejar.json"
 fun main(args : Array<String>) {
-	val COOKIEJAR_FILENAME = "cookiejar.json"
-
 	if(args.size < 3) {
 		print("Usage: nannextract <username> <password> <blog author>")
 		return
 	}
 
 	val api = BlackMarketApi()
+	if (!login(api, username = args[0], password = args[1])) {
+		println("Error logging in")
+		return
+	}
 
+	if (extractBlogs(api, author = args[2])) return
+
+	api.shutdown()
+}
+
+private fun login(api: BlackMarketApi, username:String, password:String): Boolean {
 	val cookieJar = File(COOKIEJAR_FILENAME)
-	if(cookieJar.exists()) {
+	if (cookieJar.exists()) {
 		println("Reading cookies")
 		FileInputStream(cookieJar).use {
 			api.loadCookies(it)
 		}
 	}
 
-	if(!api.isLoggedIn()) {
-		println("Cookies not present or expired, logging in")
-		val userName = args[0]
-		val password = args[1]
+	if (!api.isLoggedIn()) {
+		println("Cookies expired or not present, logging in")
 
-		val success = api.login(userName, password)
-		if(success) {
-			println("Login successful! - dumping cookies")
-			api.dumpCookies()
-		} else {
+		val success = api.login(username, password)
+		if (!success) {
 			println("Error logging in")
-			return
+			return false
 		}
 
 		FileOutputStream(File(COOKIEJAR_FILENAME)).use { api.saveCookies(it) }
 	}
 
-	val authors = api.lookupAuthor(args[2])
-	if(authors.isEmpty()) {
+	return api.isLoggedIn()
+}
+
+private fun extractBlogs(api: BlackMarketApi, author:String): Boolean {
+	val authors = api.lookupAuthor(author)
+	if (authors.isEmpty()) {
 		println("Author not found")
-		return
+		return false
 	}
-	if(authors.size > 1) {
+
+	if (authors.size > 1) {
 		println("Multiple authors found - using ${authors.first()}")
 	}
 
@@ -79,7 +88,7 @@ fun main(args : Array<String>) {
 	}
 
 	println("Waiting for work to be done")
-	while(true) {
+	while (true) {
 		val running = api.client.dispatcher().runningCallsCount()
 		val pending = api.client.dispatcher().queuedCallsCount()
 
@@ -89,7 +98,7 @@ fun main(args : Array<String>) {
 		val progressBar = generateProgressBar(amountDone, total)
 
 		print("\r[$progressBar] ${Math.round(percentDone * 100)}% $amountDone/$total")
-		if(running == 0 && pending == 0) {
+		if (running == 0 && pending == 0) {
 			break
 		}
 
@@ -98,6 +107,5 @@ fun main(args : Array<String>) {
 
 	val duration = Duration.between(beforeTime, Instant.now())
 	println("\nDone after ${duration.toMillis() / 1000.0}s, shutting down")
-
-	api.shutdown()
+	return true
 }

@@ -9,6 +9,7 @@ import nannextract.util.DateUtil
 import okhttp3.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.slf4j.LoggerFactory
 import java.io.*
 import java.time.LocalDate
 import java.util.*
@@ -18,11 +19,16 @@ import java.util.function.Supplier
 import java.util.regex.Pattern
 
 class BlackMarketApi {
+	private val logger = LoggerFactory.getLogger(javaClass)
+
 	val MAX_CONCURRENT_CONNECTIONS = 20
 
 	val cookieStore = CookieStore()
 	val client:OkHttpClient = OkHttpClient.Builder()
 			.cookieJar(cookieStore)
+			.connectTimeout(20, TimeUnit.SECONDS)
+			.readTimeout(20, TimeUnit.SECONDS)
+			.writeTimeout(20, TimeUnit.SECONDS)
 			.build()
 
 	init {
@@ -153,7 +159,7 @@ class BlackMarketApi {
 
 		client.newCall(request).enqueue(object : Callback {
 			override fun onFailure(call: Call, e: IOException) {
-				System.err.println("Error retrieving blog#$blogId - $e")
+				logger.error("Error retrieving blog#$blogId", e)
 			}
 
 			override fun onResponse(call: Call, response: Response) {
@@ -180,7 +186,7 @@ class BlackMarketApi {
 		})
 	}
 
-	fun retrievePresentation(userId:Int, consumer:Consumer<String>) {
+	fun retrievePresentation(userId:Int, consumer:Consumer<String?>) {
 		simpleAsync("http://blackmarket.dk/Presentation?action=view&uid=$userId", Consumer {
 			dom -> consumer.accept(Extractors.extractMainContent(dom))
 		})
@@ -191,7 +197,7 @@ class BlackMarketApi {
 
 		client.newCall(request).enqueue(object : Callback {
 			override fun onFailure(call: Call?, e: IOException?) {
-				System.err.println("Error retrieving $url!")
+				logger.error("Error retrieving $url!", e)
 			}
 
 			override fun onResponse(call: Call, response: Response) {
