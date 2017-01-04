@@ -30,5 +30,22 @@ class Extractors {
 				Contact(userId = userId, userName = name, title = title, lastLogin = lastLogin)
 			}
 		}
+
+		/**
+		 * Extracts the main content area (as used in profile and presentation)
+		 *
+		 * @return main html contents with <script> elements removed, null for a nonexisting profile/presentation
+		 */
+		fun extractMainContent(dom: Document): String? {
+			// Empty pages has "Black Market" in header, otherwise it's "${name}s profil" or "${name}s præsentation".
+			val emptyCheck = dom.select("div.mainContainer > div.heading > div.pageheader")
+			if("Black Market" == emptyCheck.text()) {
+				return null
+			}
+
+			val content = dom.select("div.mainContainer > div.content")
+			content.select("script").remove()
+			return content.html()
+		}
 	}
 }

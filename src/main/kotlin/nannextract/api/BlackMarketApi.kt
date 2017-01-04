@@ -8,6 +8,7 @@ import nannextract.model.Contact
 import nannextract.util.DateUtil
 import okhttp3.*
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.io.*
 import java.time.LocalDate
 import java.util.*
@@ -167,19 +168,35 @@ class BlackMarketApi {
 		})
 	}
 
-	fun retrieveContact(userId:Int, consumer:Consumer<List<Contact>>) {
-		val url = "http://blackmarket.dk/Friend?action=viewall&uid=$userId&view=list"
+	fun retrieveContacts(userId:Int, consumer:Consumer<List<Contact>>) {
+		simpleAsync("http://blackmarket.dk/Friend?action=viewall&uid=$userId&view=list", Consumer {
+			dom -> consumer.accept(Extractors.extractContacts(dom, Supplier { LocalDate.now() }))
+		})
+	}
+
+	fun retrieveProfile(userId:Int, consumer:Consumer<String?>) {
+		simpleAsync("http://blackmarket.dk/Profile?action=view&uid=$userId", Consumer {
+			dom -> consumer.accept(Extractors.extractMainContent(dom))
+		})
+	}
+
+	fun retrievePresentation(userId:Int, consumer:Consumer<String>) {
+		simpleAsync("http://blackmarket.dk/Presentation?action=view&uid=$userId", Consumer {
+			dom -> consumer.accept(Extractors.extractMainContent(dom))
+		})
+	}
+
+	fun simpleAsync(url:String, consumer:Consumer<Document>) {
 		val request = Request.Builder().url(url).get().build()
 
 		client.newCall(request).enqueue(object : Callback {
 			override fun onFailure(call: Call?, e: IOException?) {
-				System.err.println("Error retrieving contacts for user $userId!")
-				consumer.accept(emptyList())
+				System.err.println("Error retrieving $url!")
 			}
 
 			override fun onResponse(call: Call, response: Response) {
 				val dom = response.use { Jsoup.parse(response.body().string()) }
-				consumer.accept(Extractors.extractContacts(dom, Supplier { LocalDate.now() }))
+				consumer.accept(dom)
 			}
 		})
 	}
