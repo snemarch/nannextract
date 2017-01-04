@@ -23,7 +23,6 @@ class BlackMarketApi {
 	val client:OkHttpClient = OkHttpClient.Builder()
 			.cookieJar(cookieStore)
 			.build()
-	var isLoggedIn = false
 
 	init {
 		client.dispatcher().maxRequests = MAX_CONCURRENT_CONNECTIONS
@@ -37,8 +36,17 @@ class BlackMarketApi {
 				.post(body)
 				.build()
 
-		isLoggedIn = client.newCall(request).execute().use { it.isSuccessful }
-		return isLoggedIn
+		return client.newCall(request).execute().use { it.isSuccessful }
+	}
+
+	fun isLoggedIn():Boolean {
+		// If we get redirected to the frontpage by trying to view the profile, we're not logged in. Unfortunately it
+		// doesn't seem like OkHttp can disable redirect-follow without creating a new client, so we check isRedirect
+		// on priorResponse, if present.
+		val request = Request.Builder().url("http://blackmarket.dk/Profile?action=view").get().build()
+		val response = client.newCall(request).execute()
+
+		return !(response.priorResponse()?.isRedirect ?: false)
 	}
 
 	fun shutdown() {

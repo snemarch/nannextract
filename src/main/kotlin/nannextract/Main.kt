@@ -28,8 +28,10 @@ fun main(args : Array<String>) {
 		FileInputStream(cookieJar).use {
 			api.loadCookies(it)
 		}
-	} else {
-		println("Logging in")
+	}
+
+	if(!api.isLoggedIn()) {
+		println("Cookies not present or expired, logging in")
 		val userName = args[0]
 		val password = args[1]
 
