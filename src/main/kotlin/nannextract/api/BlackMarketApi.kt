@@ -51,9 +51,9 @@ class BlackMarketApi {
 		// doesn't seem like OkHttp can disable redirect-follow without creating a new client, so we check isRedirect
 		// on priorResponse, if present.
 		val request = Request.Builder().url("http://blackmarket.dk/Profile?action=view").get().build()
-		val response = client.newCall(request).execute()
-
-		return !(response.priorResponse()?.isRedirect ?: false)
+		return client.newCall(request).execute().use {
+			!(it.priorResponse()?.isRedirect ?: false)
+		}
 	}
 
 	fun shutdown() {
