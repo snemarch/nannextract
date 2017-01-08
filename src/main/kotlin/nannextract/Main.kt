@@ -136,27 +136,37 @@ object Main {
 	fun sweepingScrape(api: BlackMarketApi, userIdRange: IntRange) {
 		logger.info("Starting scrape of userId range $userIdRange")
 
-		var lastStatus = Instant.now()
-		for (userId in userIdRange) {
+		sweepHelper(api, userIdRange, Consumer {
+			userId ->
+
 			createOutputPath("output/${bin(userId)}")
 
 			api.retrieveProfile(userId, Consumer {
 				content -> if (content != null) {
-					File("output/${bin(userId)}/$userId.profile.html").writeText(content)
-				}
+				File("output/${bin(userId)}/$userId.profile.html").writeText(content)
+			}
 			})
 
 			api.retrievePresentation(userId, Consumer {
 				content -> if (content != null) {
-					File("output/${bin(userId)}/$userId.presentation.html").writeText(content)
-				}
+				File("output/${bin(userId)}/$userId.presentation.html").writeText(content)
+			}
 			})
 
 			api.retrieveContacts(userId, Consumer {
 				content -> if (!content.isEmpty()) {
-					File("output/${bin(userId)}/$userId.contacts.json").writeText(Gson().toJson(content))
-				}
+				File("output/${bin(userId)}/$userId.contacts.json").writeText(Gson().toJson(content))
+			}
 			})
+		})
+
+		logger.info("Scrape done")
+	}
+
+	fun sweepHelper(api: BlackMarketApi, userIdRange: IntRange, operation: Consumer<Int>) {
+		var lastStatus = Instant.now()
+		for (userId in userIdRange) {
+			operation.accept(userId)
 
 			// Print status about every 250ms. We do it with a is-time-past check since we don't want to add artificial
 			// delays to the scraping process...
@@ -170,10 +180,9 @@ object Main {
 				Thread.sleep(250)
 			}
 		}
-		println()
+		println("\n\n")
 
 		waitForWorkers(api)
-		logger.info("Scrape done")
 	}
 
 	fun waitForWorkers(api: BlackMarketApi) {
