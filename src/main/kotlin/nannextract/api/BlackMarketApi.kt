@@ -61,13 +61,13 @@ class BlackMarketApi {
 		client.dispatcher().executorService().awaitTermination(10, TimeUnit.SECONDS)
 	}
 
-	fun retrieveBlogPostListFor(author:Author) : List<BlogPostMeta> {
+	fun retrieveBlogPostListFor(userId:Int) : List<BlogPostMeta> {
 		var currentPage = 1
 
 		val blogMetaList = mutableListOf<BlogPostMeta>()
 
 		while(true) {
-			val list = retrieveBlogListPage(author.userId, currentPage++)
+			val list = retrieveBlogListPage(userId, currentPage++)
 			if(list.isEmpty()) {
 				break
 			}

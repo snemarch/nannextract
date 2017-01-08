@@ -35,13 +35,21 @@ object Main {
 		}
 
 		if (args[2] == "@scrape") {
-			if(args.size < 5) {
+			if (args.size < 5) {
 				println("@scrape requires starting and ending userids to scrape")
 				return
 			}
 			val range = args[3].toInt() .. args[4].toInt()
 			sweepingScrape(api, range)
-		} else {
+		} else if (args[2] == "@blogs") {
+			if (args.size < 5) {
+				println("@blogs requires starting and ending userids to scrape")
+				return
+			}
+			val range = args[3].toInt() .. args[4].toInt()
+			sweepingBlogScrape(api, range)
+		} else
+		{
 			extractBlogs(api, author = args[2])
 		}
 
@@ -85,34 +93,14 @@ object Main {
 			logger.info("Multiple authors found - using ${authors.first()}")
 		}
 
-		logger.info("Retrieving list of blogs")
-		val blogList = api.retrieveBlogPostListFor(authors.first())
-
-		logger.info("Retrieving ${blogList.size} blog entries")
-
 		val beforeTime = Instant.now()
-
-		Files.createDirectories(Paths.get("output"))
-		for (blog in blogList) {
-			api.retrieveBlogContent(blog.id, Consumer {
-				val filename = "output/${blog.date} - ${blog.id}.html"
-				val body = it.second
-
-				FileOutputStream(File(filename)).use {
-					OutputStreamWriter(it).use {
-						it.write("${blog.title} - ${blog.date} - ${blog.numViews} views\n\n")
-						it.write(body)
-					}
-				}
-			})
-		}
+		val total = doExtractBlogs(api, authors.first().userId)
 
 		println("Waiting for work to be done")
 		while (true) {
 			val running = api.client.dispatcher().runningCallsCount()
 			val pending = api.client.dispatcher().queuedCallsCount()
 
-			val total = blogList.size
 			val percentDone = (total.toDouble() - pending) / total
 			val amountDone = total - pending
 			val progressBar = generateProgressBar(amountDone, total)
@@ -128,6 +116,42 @@ object Main {
 		val duration = Duration.between(beforeTime, Instant.now())
 		logger.info("\nDone after ${duration.toMillis() / 1000.0}s, shutting down")
 		return true
+	}
+
+	fun doExtractBlogs(api:BlackMarketApi, userId: Int): Int {
+		logger.info("Retrieving list of blogs for $userId")
+		val blogList = api.retrieveBlogPostListFor(userId)
+
+		logger.info("Retrieving ${blogList.size} blog entries for $userId")
+
+		val out = "output/${bin(userId)}/$userId.blogs"
+		createOutputPath(out)
+
+		for (blog in blogList) {
+			api.retrieveBlogContent(blog.id, Consumer {
+				val filename = "$out/${blog.date} - ${blog.id}.html"
+				val body = it.second
+
+				FileOutputStream(File(filename)).use {
+					OutputStreamWriter(it).use {
+						it.write("${blog.title} - ${blog.date} - ${blog.numViews} views\n\n")
+						it.write(body)
+					}
+				}
+			})
+		}
+
+		return blogList.size
+	}
+
+	fun sweepingBlogScrape(api: BlackMarketApi, userIdRange : IntRange) {
+		logger.info("Starting blog scrape of userId range $userIdRange")
+
+		sweepHelper(api, userIdRange, Consumer {
+			userId -> doExtractBlogs(api, userId)
+		})
+
+		logger.info("Blog scrape done")
 	}
 
 	/**
@@ -160,7 +184,7 @@ object Main {
 			})
 		})
 
-		logger.info("Scrape done")
+		logger.info("Profile scrape done")
 	}
 
 	fun sweepHelper(api: BlackMarketApi, userIdRange: IntRange, operation: Consumer<Int>) {
